@@ -124,7 +124,11 @@
         // salva as UTMs nos cookies, localStorage e sessionStorage
         ktmsLibFuncs.saveCookie = function(paramName, value) {
             try {                
-                document.cookie = paramName + "=" + value + ";"; // Salvar nos cookies
+                var expirationDate = new Date();
+                expirationDate.setTime(expirationDate.getTime() + (1 * 60 * 60 * 1000)); // define o tempo de expiração e 1hr
+        
+                var expires = "expires=" + expirationDate.toUTCString();
+                document.cookie = paramName + "=" + value + ";" + expires + ";path=/"; // Salvar nos cookies com o tempo de expiração
                 return true;
             } catch (error) {
                 console.error('[KTMS] Erro ao salvar paramêtros nos cookies');

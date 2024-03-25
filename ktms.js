@@ -88,7 +88,7 @@
                 const cookieValue = this.getCookie(paramName);
                 const localStorageValue = this.getLocalStorage(paramName);
                 const sessionStorageValue = this.getSessionStorage(paramName);
-                return cookieValue || localStorageValue || sessionStorageValue || '';
+                return cookieValue || localStorageValue || sessionStorageValue || false;
             } catch (error) {
                 console.error('[KTMS] Erro ao buscar paramêtros de marketing');
                 return false;

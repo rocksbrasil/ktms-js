@@ -10,6 +10,7 @@
             console.log('[KTMS] Initializing...');
             ktmsLibFuncs.saveUtms();
             ktmsLibFuncs.addUtmsHref();
+            return true;
         };
 
         // salvar os parametros
@@ -153,6 +154,20 @@
                 return false;
             }
         }
+
+        ktmsLibFuncs.load = function(completeFunc) {
+           try {
+                if(this.init() && typeof(completeFunc)) {
+                    completeFunc();
+                } else {
+                    this.load();
+                }               
+               return true;
+           } catch (error) {
+                return false;
+           }
+        }
+
         return ktmsLibFuncs;
     }
 

@@ -16,5 +16,25 @@
         console.log('utm source', typeof(ktms.getUtm('utm_source')), ktms.getUtm('utm_source'));
         console.log('utm inexistente', typeof(ktms.getUtm('utm_alguma')), ktms.getUtm('utm_alguma'));
     </script>
+    
+
+    <script>        
+        ktms.load(function(){
+            var umtCampanha = ktms.getUtm('utm_campaign');
+            var utmOrigem = ktms.getUtm('utm_source');
+            var utmConteudo = ktms.getUtm('utm_content');
+            var utmIntermediario = ktms.getUtm('utm_medium');
+            var utm_termo = ktms.getUtm('utm_term');
+
+            var utmParams = {};
+            if(umtCampanha) { utmParams['utm_campanha'] = umtCampanha; }
+            if(utmOrigem) { utmParams['utm_origem'] = utmOrigem; }
+            if(utmConteudo) { utmParams['utm_conteudo'] = utmConteudo; }
+            if(utmIntermediario) { utmParams['utm_intermediario'] = utmIntermediario; }
+            if(utm_termo) { utmParams['utm_termo'] = utm_termo; }
+
+            console.log('utmParams', utmParams);
+        });
+    </script>
 </body>
 </html>

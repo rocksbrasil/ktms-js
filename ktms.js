@@ -16,7 +16,7 @@
         // salvar os parametros
         ktmsLibFuncs.saveUtms = function(){
             try {
-                if(typeof(window.saveUtms) == 'boolean' && window.saveUtms) { console.log('entrei aqui no save'); return false; } //trigger do método
+                if(typeof(window.saveUtms) == 'boolean' && window.saveUtms) { return false; } //trigger do método
                 window.saveUtms = true; //adiciona o trigger do método
                 const params = new URLSearchParams(window.location.search); //busca a URL do usuário
                 const chavesUtm = [];

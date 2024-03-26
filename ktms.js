@@ -16,7 +16,8 @@
         // salvar os parametros
         ktmsLibFuncs.saveUtms = function(){
             try {
-                if(typeof(window.saveUtms) == 'boolean' && window.saveUtms) { return false; } //trigger do método
+                if(typeof(window.saveUtms) == 'boolean' && window.saveUtms) { console.log('entrei aqui no save'); return false; } //trigger do método
+                window.saveUtms = true; //adiciona o trigger do método
                 const params = new URLSearchParams(window.location.search); //busca a URL do usuário
                 const chavesUtm = [];
 
@@ -48,6 +49,7 @@
         ktmsLibFuncs.addUtmsHref = function(){
             try {
                 if(typeof(window.addUtmsHref) == 'boolean' && window.addUtmsHref) { return false; } //trigger do método
+                window.addUtmsHref = true; //adiciona o trigger ao método
                 var utmKeys = this.getUtm('utmKey'); // Busca as chaves das UTMs
         
                 // Verifica se retornou uma string
@@ -156,16 +158,21 @@
         }
 
         ktmsLibFuncs.load = function(completeFunc) {
-           try {
-                if(this.init() && typeof(completeFunc)) {
-                    completeFunc();
+            try {
+                if (typeof(completeFunc) === 'function') {
+                    if (this.init()) {
+                        completeFunc();
+                    } else {
+                        console.error('[KTMS] Erro ao inicializar a biblioteca');
+                    }
                 } else {
-                    this.load();
-                }               
-               return true;
-           } catch (error) {
+                    console.error('[KTMS] Função de conclusão inválida');
+                }
+                return true;
+            } catch (error) {
+                console.error('[KTMS] Erro ao carregar a biblioteca:', error);
                 return false;
-           }
+            }
         }
 
         return ktmsLibFuncs;

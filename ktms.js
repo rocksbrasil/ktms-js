@@ -13,13 +13,14 @@
             return true;
         };
 
-        // salvar os parametros
+        // salvar os parametros UTMS
         ktmsLibFuncs.saveUtms = function(){
             try {
                 if(typeof(window.saveUtms) == 'boolean' && window.saveUtms) { return false; } //trigger do método
                 window.saveUtms = true; //adiciona o trigger do método
                 const params = new URLSearchParams(window.location.search); //busca a URL do usuário
                 const chavesUtm = [];
+                const chaves = [];
 
                 // Salvar os parâmetros
                 for (const [key, value] of params.entries()) { 
@@ -28,7 +29,12 @@
                         this.saveLocal(key, value);
                         this.saveSession(key, value);   
                         chavesUtm.push(key); //salva todas as chaves em um array
-                    }     
+                    } else {
+                        this.saveCookie(key, value);
+                        this.saveLocal(key, value);
+                        this.saveSession(key, value);   
+                        chaves.push(key); //salva todas as chaves em um array
+                    }
                 }     
 
                 // Salva os nomes das chaves nos cookies, session e local, para serem buscadas dps
@@ -36,6 +42,13 @@
                     this.saveCookie('utmKey', chavesUtm);
                     this.saveLocal('utmKey', chavesUtm);
                     this.saveSession('utmKey', chavesUtm);   
+                }
+
+                // salva os outros parâmetros
+                if(chaves.length > 0) {
+                    this.saveCookie('hrefKeys', chaves);
+                    this.saveLocal('hrefKeys', chaves);
+                    this.saveSession('hrefKeys', chaves);   
                 }
 
                 return true;

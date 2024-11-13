@@ -4,7 +4,7 @@
 (function(window){
     function ktmsLib(){
         var ktmsLibFuncs = {};
-        var ktmsUtmTagsToPass = ['utm_campaign', 'utm_source', 'utm_content', 'utm_medium', 'gclid', 'fbp', 'fbc'];
+        var ktmsUtmTagsToPass = ['utm_campaign', 'utm_source', 'utm_content', 'utm_medium', 'gclid', 'fbp', 'fbc', 'fbclid'];
 
         //função de inicialização
         ktmsLibFuncs.init = function(){

@@ -4,6 +4,7 @@
 (function(window){
     function ktmsLib(){
         var ktmsLibFuncs = {};
+        var ktmsUtmTagsToPass = ['utm_campaign', 'utm_source', 'utm_content', 'utm_medium', 'gclid', 'fbp', 'fbc'];
 
         //função de inicialização
         ktmsLibFuncs.init = function(){
@@ -24,7 +25,7 @@
 
                 // Salvar os parâmetros
                 for (const [key, value] of params.entries()) { 
-                    if(key.includes('utm')) {
+                    if(ktmsUtmTagsToPass.includes(key)) {
                         this.saveCookie(key, value);
                         this.saveLocal(key, value);
                         this.saveSession(key, value);   

@@ -5,6 +5,7 @@
     function ktmsLib(){
         var ktmsLibFuncs = {};
         var ktmsUtmTagsToPass = ['utm_campaign', 'utm_source', 'utm_content', 'utm_medium', 'gclid', 'fbp', 'fbc', 'fbclid'];
+        var prefix = 'ktms_'; // prefixo personalizado para identificação dos parâmetros salvos
 
         //função de inicialização
         ktmsLibFuncs.init = function(){
@@ -25,31 +26,34 @@
 
                 // Salvar os parâmetros
                 for (const [key, value] of params.entries()) { 
+                    const paramName = prefix + key;
                     if(ktmsUtmTagsToPass.includes(key)) {
-                        this.saveCookie(key, value);
-                        this.saveLocal(key, value);
-                        this.saveSession(key, value);   
+                        this.saveCookie(paramName, value);
+                        this.saveLocal(paramName, value);
+                        this.saveSession(paramName, value);   
                         chavesUtm.push(key); //salva todas as chaves em um array
                     } else {
-                        this.saveCookie(key, value);
-                        this.saveLocal(key, value);
-                        this.saveSession(key, value);   
+                        this.saveCookie(paramName, value);
+                        this.saveLocal(paramName, value);
+                        this.saveSession(paramName, value);   
                         chaves.push(key); //salva todas as chaves em um array
                     }
                 }     
 
-                // Salva os nomes das chaves nos cookies, session e local, para serem buscadas dps
+                // Salva os nomes das chaves nos cookies, session e local, para serem buscadas depois
                 if(chavesUtm.length > 0) {
-                    this.saveCookie('utmKey', chavesUtm);
-                    this.saveLocal('utmKey', chavesUtm);
-                    this.saveSession('utmKey', chavesUtm);   
+                    const joined = chavesUtm.join(',');
+                    this.saveCookie(prefix + 'utmKey', joined);
+                    this.saveLocal(prefix + 'utmKey', joined);
+                    this.saveSession(prefix + 'utmKey', joined);   
                 }
 
                 // salva os outros parâmetros
                 if(chaves.length > 0) {
-                    this.saveCookie('hrefKeys', chaves);
-                    this.saveLocal('hrefKeys', chaves);
-                    this.saveSession('hrefKeys', chaves);   
+                    const joined = chaves.join(',');
+                    this.saveCookie(prefix + 'hrefKeys', joined);
+                    this.saveLocal(prefix + 'hrefKeys', joined);
+                    this.saveSession(prefix + 'hrefKeys', joined);   
                 }
 
                 return true;
@@ -59,7 +63,7 @@
             }
         };
 
-        //buscar todas as UTMS
+        //buscar todas as UTMS e adicionar em links e formulários
         ktmsLibFuncs.addUtmsHref = function(){
             try {
                 if(typeof(window.addUtmsHref) == 'boolean' && window.addUtmsHref) { return false; } //trigger do método
@@ -86,15 +90,22 @@
                 // Atualiza o atributo href dos elementos com a classe '.utm-params'
                 var utmLinks = document.querySelectorAll('.utm-params');
                 utmLinks.forEach(link => {
-                    var href = link.getAttribute('href') || '';
-                    href += href.includes('?') ? '&' : '?'; // adiciona '&' se já existirem parâmetros na URL
-                    href += utmString; // Adiciona a string de parâmetros 'utm'
-                    link.setAttribute('href', href); // Atualiza o href
+                    if (link.tagName === 'FORM') {
+                        var action = link.getAttribute('action') || '';
+                        action += action.includes('?') ? '&' : '?';
+                        action += utmString;
+                        link.setAttribute('action', action);
+                    } else {
+                        var href = link.getAttribute('href') || '';
+                        href += href.includes('?') ? '&' : '?'; // adiciona '&' se já existirem parâmetros na URL
+                        href += utmString; // Adiciona a string de parâmetros 'utm'
+                        link.setAttribute('href', href); // Atualiza o href
+                    }
                 }); 
 
                 return true;
             } catch (error) {
-                console.error('[KTMS] Erro ao buscar e adicionar parâmetros de marketing aos links:', error);
+                console.error('[KTMS] Erro ao buscar e adicionar parâmetros de marketing aos links/forms:', error);
                 return false;
             }
         };        
@@ -102,9 +113,10 @@
         // buscar uma única utm
         ktmsLibFuncs.getUtm = function(paramName) {
             try {
-                const cookieValue = this.getCookie(paramName);
-                const localStorageValue = this.getLocalStorage(paramName);
-                const sessionStorageValue = this.getSessionStorage(paramName);
+                const fullParamName = prefix + paramName;
+                const cookieValue = this.getCookie(fullParamName);
+                const localStorageValue = this.getLocalStorage(fullParamName);
+                const sessionStorageValue = this.getSessionStorage(fullParamName);
                 return cookieValue || localStorageValue || sessionStorageValue || false;
             } catch (error) {
                 console.error('[KTMS] Erro ao buscar paramêtros de marketing');
@@ -121,18 +133,30 @@
                 return false;
             }
         }
+
+        ktmsLibFuncs.getAllCookies = function() {
+            return document.cookie.split(';').reduce((acc, cookie) => {
+                const [name, val] = cookie.split('=');
+                if (name && val) {
+                    acc[name.trim()] = decodeURIComponent(val.trim());
+                }
+                return acc;
+            }, {});
+        };
+
         ktmsLibFuncs.getLocalStorage = function(paramName) {
             try {
                 const localStorageValue = localStorage.getItem(paramName);
-                return localStorageValue ? localStorageValue : false;
+                return localStorageValue ? decodeURIComponent(localStorageValue) : false;
             } catch (error) {
                 return false;
             }
         };
+
         ktmsLibFuncs.getSessionStorage = function(paramName) {
             try {
                 const sessionStorageValue = sessionStorage.getItem(paramName);
-                return sessionStorageValue ? sessionStorageValue : false;
+                return sessionStorageValue ? decodeURIComponent(sessionStorageValue) : false;
             } catch (error) {
                 return false;
             }
@@ -140,30 +164,40 @@
 
         // salva as UTMs nos cookies, localStorage e sessionStorage
         ktmsLibFuncs.saveCookie = function(paramName, value) {
-            try {                
-                var expirationDate = new Date();
-                expirationDate.setTime(expirationDate.getTime() + (1 * 60 * 60 * 1000)); // define o tempo de expiração e 1hr
-        
-                var expires = "expires=" + expirationDate.toUTCString();
-                document.cookie = paramName + "=" + value + ";" + expires + ";path=/"; // Salvar nos cookies com o tempo de expiração
+            try {    
+                const existing = this.getCookie(paramName);
+                if (existing === value) return false; // evita sobrescrever valores idênticos
+
+                var expires = "expires=Fri, 31 Dec 2038 23:59:59 GMT"; // Cookie persistente
+                var domain = window.location.hostname !== 'localhost' ? ";domain=." + window.location.hostname.replace(/^www\./, "") : "";
+
+                document.cookie = paramName + "=" + encodeURIComponent(value) + ";" + expires + ";path=/" + domain; // Salvar nos cookies
                 return true;
             } catch (error) {
                 console.error('[KTMS] Erro ao salvar paramêtros nos cookies');
                 return false;
             }
         }
+
         ktmsLibFuncs.saveLocal = function(paramName, value) {
-            try {                
-                localStorage.setItem(paramName, value); // Salvar no localStorage
+            try {    
+                const existing = this.getLocalStorage(paramName);
+                if (existing === value) return false; // evita sobrescrever valores idênticos
+
+                localStorage.setItem(paramName, encodeURIComponent(value)); // Salvar no localStorage
                 return true;
             } catch (error) {
                 console.error('[KTMS] Erro ao salvar paramêtros no localStorage');
                 return false;
             }
         }
+
         ktmsLibFuncs.saveSession = function(paramName, value) {
-            try {                
-                sessionStorage.setItem(paramName, value); // Salvar no sessionStorage
+            try {    
+                const existing = this.getSessionStorage(paramName);
+                if (existing === value) return false; // evita sobrescrever valores idênticos
+
+                sessionStorage.setItem(paramName, encodeURIComponent(value)); // Salvar no sessionStorage
                 return true;
             } catch (error) {
                 console.error('[KTMS] Erro ao salvar paramêtros no SessionStorage');

@@ -30,15 +30,6 @@
                     return false;
                 }
 
-                //limpar listas salvas de chaves antigas
-                this.saveCookie(prefix + 'utmKey', '');
-                this.saveLocal(prefix + 'utmKey', '');
-                this.saveSession(prefix + 'utmKey', '');
-
-                this.saveCookie(prefix + 'hrefKeys', '');
-                this.saveLocal(prefix + 'hrefKeys', '');
-                this.saveSession(prefix + 'hrefKeys', '');
-
                 //salvar os novos parâmetros com base na URL
                 for (const [key, value] of params.entries()) {
                     const paramName = prefix + key;

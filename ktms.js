@@ -15,100 +15,133 @@
             return true;
         };
 
-        // salvar os parametros UTMS
+        //salvar os parametros UTMS
         ktmsLibFuncs.saveUtms = function(){
             try {
-                if(typeof(window.saveUtms) == 'boolean' && window.saveUtms) { return false; } //trigger do método
-                window.saveUtms = true; //adiciona o trigger do método
-                const params = new URLSearchParams(window.location.search); //busca a URL do usuário
+                if (typeof(window.saveUtms) === 'boolean' && window.saveUtms) return false;
+                window.saveUtms = true;
+
+                const params = new URLSearchParams(window.location.search);
                 const chavesUtm = [];
                 const chaves = [];
 
-                // Salvar os parâmetros
-                for (const [key, value] of params.entries()) { 
-                    const paramName = prefix + key;
-                    if(ktmsUtmTagsToPass.includes(key)) {
-                        this.saveCookie(paramName, value);
-                        this.saveLocal(paramName, value);
-                        this.saveSession(paramName, value);   
-                        chavesUtm.push(key); //salva todas as chaves em um array
-                    } else {
-                        this.saveCookie(paramName, value);
-                        this.saveLocal(paramName, value);
-                        this.saveSession(paramName, value);   
-                        chaves.push(key); //salva todas as chaves em um array
-                    }
-                }     
+                if (params.toString() === '') {
+                    console.log('[KTMS] Nenhum parâmetro na URL. Nada será sobrescrito.');
+                    return false;
+                }
 
-                // Salva os nomes das chaves nos cookies, session e local, para serem buscadas depois
-                if(chavesUtm.length > 0) {
+                //limpar listas salvas de chaves antigas
+                this.saveCookie(prefix + 'utmKey', '');
+                this.saveLocal(prefix + 'utmKey', '');
+                this.saveSession(prefix + 'utmKey', '');
+
+                this.saveCookie(prefix + 'hrefKeys', '');
+                this.saveLocal(prefix + 'hrefKeys', '');
+                this.saveSession(prefix + 'hrefKeys', '');
+
+                //salvar os novos parâmetros com base na URL
+                for (const [key, value] of params.entries()) {
+                    const paramName = prefix + key;
+
+                    //sempre sobrescreve os valores com os da URL
+                    this.saveCookie(paramName, value);
+                    this.saveLocal(paramName, value);
+                    this.saveSession(paramName, value);
+
+                    if (ktmsUtmTagsToPass.includes(key)) {
+                        chavesUtm.push(key);
+                    } else {
+                        chaves.push(key);
+                    }
+                }
+
+                //salva as listas de chaves
+                if (chavesUtm.length > 0) {
                     const joined = chavesUtm.join(',');
                     this.saveCookie(prefix + 'utmKey', joined);
                     this.saveLocal(prefix + 'utmKey', joined);
-                    this.saveSession(prefix + 'utmKey', joined);   
+                    this.saveSession(prefix + 'utmKey', joined);
                 }
 
-                // salva os outros parâmetros
-                if(chaves.length > 0) {
+                if (chaves.length > 0) {
                     const joined = chaves.join(',');
                     this.saveCookie(prefix + 'hrefKeys', joined);
                     this.saveLocal(prefix + 'hrefKeys', joined);
-                    this.saveSession(prefix + 'hrefKeys', joined);   
+                    this.saveSession(prefix + 'hrefKeys', joined);
                 }
 
                 return true;
             } catch (error) {
-                console.error('[KTMS] Erro ao salvar paramêtros de marketing', error);
+                console.error('[KTMS] Erro ao salvar parâmetros de marketing', error);
                 return false;
             }
         };
 
+
         //buscar todas as UTMS e adicionar em links e formulários
-        ktmsLibFuncs.addUtmsHref = function(){
+        ktmsLibFuncs.addUtmsHref = function() {
             try {
-                if(typeof(window.addUtmsHref) == 'boolean' && window.addUtmsHref) { return false; } //trigger do método
-                window.addUtmsHref = true; //adiciona o trigger ao método
-                var utmKeys = this.getUtm('utmKey'); // Busca as chaves das UTMs
-        
-                // Verifica se retornou uma string
-                if (typeof utmKeys !== 'string') {
-                    console.error('[KTMS] UTMs não encontradas');
+                if (typeof(window.addUtmsHref) === 'boolean' && window.addUtmsHref) return false;
+                window.addUtmsHref = true;
+
+                const utmKeysStr = this.getUtm('utmKey');
+                if (typeof utmKeysStr !== 'string' || utmKeysStr.trim() === '') {
+                    console.warn('[KTMS] Nenhuma UTM encontrada para adicionar.');
                     return false;
                 }
-        
-                utmKeys = utmKeys.split(','); // Monta o array de chaves
 
-                // Cria a string de parâmetros 'utm'
-                var utmString = utmKeys.map(utm => {
-                    var utmValue = this.getUtm(utm);
-                    if (utmValue) {
-                        return encodeURIComponent(utm) + '=' + encodeURIComponent(utmValue);
-                    }
-                    return null;
-                }).filter(Boolean).join('&'); // remove os valores nulos (filter) e junta os parâmetros 'utm' separados por '&'
+                const utmKeys = utmKeysStr.split(',');
+                const utmParams = new URLSearchParams();
 
-                // Atualiza o atributo href dos elementos com a classe '.utm-params'
-                var utmLinks = document.querySelectorAll('.utm-params');
+                utmKeys.forEach(key => {
+                    const value = this.getUtm(key);
+                    if (value) utmParams.set(key, value); // Sempre sobrescreve os valores
+                });
+
+                const utmString = utmParams.toString();
+                if (!utmString) return false;
+
+                const utmLinks = document.querySelectorAll('.utm-params');
                 utmLinks.forEach(link => {
                     if (link.tagName === 'FORM') {
-                        var action = link.getAttribute('action') || '';
-                        action += action.includes('?') ? '&' : '?';
-                        action += utmString;
-                        link.setAttribute('action', action);
+                        const originalAction = link.getAttribute('action') || '';
+                        const url = new URL(originalAction, window.location.origin);
+
+                        // Remove parâmetros duplicados
+                        utmKeys.forEach(key => url.searchParams.delete(key));
+
+                        // Adiciona os novos UTMs
+                        utmKeys.forEach(key => {
+                            const value = this.getUtm(key);
+                            if (value) url.searchParams.set(key, value);
+                        });
+
+                        link.setAttribute('action', url.toString());
+
                     } else {
-                        var href = link.getAttribute('href') || '';
-                        href += href.includes('?') ? '&' : '?'; // adiciona '&' se já existirem parâmetros na URL
-                        href += utmString; // Adiciona a string de parâmetros 'utm'
-                        link.setAttribute('href', href); // Atualiza o href
+                        const originalHref = link.getAttribute('href') || '';
+                        const url = new URL(originalHref, window.location.origin);
+
+                        // Remove parâmetros duplicados
+                        utmKeys.forEach(key => url.searchParams.delete(key));
+
+                        // Adiciona os novos UTMs
+                        utmKeys.forEach(key => {
+                            const value = this.getUtm(key);
+                            if (value) url.searchParams.set(key, value);
+                        });
+
+                        link.setAttribute('href', url.toString());
                     }
-                }); 
+                });
 
                 return true;
             } catch (error) {
-                console.error('[KTMS] Erro ao buscar e adicionar parâmetros de marketing aos links/forms:', error);
+                console.error('[KTMS] Erro ao adicionar UTMs aos links/formulários:', error);
                 return false;
             }
-        };        
+        };
+        
 
         // buscar uma única utm
         ktmsLibFuncs.getUtm = function(paramName) {

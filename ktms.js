@@ -182,20 +182,27 @@
 
         // salva as UTMs nos cookies, localStorage e sessionStorage
         ktmsLibFuncs.saveCookie = function(paramName, value) {
-            try {    
-                const existing = this.getCookie(paramName);
-                if (existing === value) return false; // evita sobrescrever valores idênticos
+            try {
+                var existing = this.getCookie(paramName);
+                if (existing === value) return false;
 
-                var expires = "expires=Fri, 31 Dec 2038 23:59:59 GMT"; // Cookie persistente
-                var domain = window.location.hostname !== 'localhost' ? ";domain=." + window.location.hostname.replace(/^www\./, "") : "";
+                var expires = "expires=Fri, 31 Dec 2038 23:59:59 GMT";
 
-                document.cookie = paramName + "=" + encodeURIComponent(value) + ";" + expires + ";path=/" + domain; // Salvar nos cookies
+                // Extrai o domínio raiz (ex: .astronmembers.com.br)
+                var parts = window.location.hostname.split('.');
+                var baseDomain = parts.length > 2
+                    ? parts.slice(parts.length - 2).join('.')
+                    : window.location.hostname;
+
+                var domain = ";domain=." + baseDomain;
+
+                document.cookie = paramName + "=" + encodeURIComponent(value) + ";" + expires + ";path=/" + domain;
                 return true;
             } catch (error) {
-                console.error('[KTMS] Erro ao salvar paramêtros nos cookies');
+                console.error('[KTMS] Erro ao salvar parâmetros nos cookies');
                 return false;
             }
-        }
+        };
 
         ktmsLibFuncs.saveLocal = function(paramName, value) {
             try {    

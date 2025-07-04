@@ -92,18 +92,14 @@
                 }
 
                 var utmKeys = utmKeysStr.split(',');
-                var utmString = '';
+                var utmParams = {};
 
+                // Monta objeto com valores persistidos
                 for (var i = 0; i < utmKeys.length; i++) {
                     var key = utmKeys[i];
                     var value = this.getUtm(key);
-                    if (value) {
-                        if (utmString.length > 0) utmString += '&';
-                        utmString += encodeURIComponent(key) + '=' + encodeURIComponent(value);
-                    }
+                    if (value) utmParams[key] = value;
                 }
-
-                if (!utmString) return false;
 
                 var utmLinks = document.querySelectorAll('.utm-params');
                 for (var j = 0; j < utmLinks.length; j++) {
@@ -111,16 +107,38 @@
                     var attr = link.tagName === 'FORM' ? 'action' : 'href';
                     var original = link.getAttribute(attr) || '';
 
-                    // Corrige casos onde o link já tem & mas não tem ?
+                    // Corrige caso de & sem ?
                     if (original.indexOf('?') === -1 && original.indexOf('&') !== -1) {
-                        var split = original.split('&');
-                        var base = split.shift();
-                        original = base + '?' + split.join('&');
+                        var parts = original.split('&');
+                        var base = parts.shift();
+                        original = base + '?' + parts.join('&');
                     }
 
-                    var sep = original.indexOf('?') !== -1 ? '&' : '?';
-                    var finalUrl = original + sep + utmString;
+                    // Divide a URL entre base e query
+                    var parts = original.split('?');
+                    var baseUrl = parts[0];
+                    var queryString = parts[1] || '';
+                    var newParams = [];
 
+                    // Copia os parâmetros existentes, exceto os que serão substituídos
+                    if (queryString) {
+                        var existing = queryString.split('&');
+                        for (var k = 0; k < existing.length; k++) {
+                            var pair = existing[k].split('=');
+                            var paramKey = decodeURIComponent(pair[0]);
+                            if (!(paramKey in utmParams)) {
+                                newParams.push(existing[k]);
+                            }
+                        }
+                    }
+
+                    // Adiciona os novos UTMs
+                    for (var utmKey in utmParams) {
+                        var encoded = encodeURIComponent(utmKey) + '=' + encodeURIComponent(utmParams[utmKey]);
+                        newParams.push(encoded);
+                    }
+
+                    var finalUrl = baseUrl + (newParams.length > 0 ? '?' + newParams.join('&') : '');
                     link.setAttribute(attr, finalUrl);
                 }
 

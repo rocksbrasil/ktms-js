@@ -21,41 +21,48 @@
                 if (typeof(window.saveUtms) === 'boolean' && window.saveUtms) return false;
                 window.saveUtms = true;
 
-                const params = new URLSearchParams(window.location.search);
-                const chavesUtm = [];
-                const chaves = [];
-
+                var params = new URLSearchParams(window.location.search);
                 if (params.toString() === '') {
-                    console.log('[KTMS] Nenhum parâmetro na URL. Nada será sobrescrito.');
+                    console.log('[KTMS] Nenhum parâmetro na URL. Nada será atualizado.');
                     return false;
                 }
 
-                //salvar os novos parâmetros com base na URL
-                for (const [key, value] of params.entries()) {
-                    const paramName = prefix + key;
+                // Recupera as chaves já salvas
+                var utmKeyStr = this.getUtm('utmKey') || '';
+                var hrefKeyStr = this.getUtm('hrefKeys') || '';
+                var existingUtmKeys = utmKeyStr ? utmKeyStr.split(',') : [];
+                var existingHrefKeys = hrefKeyStr ? hrefKeyStr.split(',') : [];
 
-                    //sempre sobrescreve os valores com os da URL
+                var chavesUtm = existingUtmKeys.slice(); // cópias
+                var chaves = existingHrefKeys.slice();
+
+                for (var pair of params.entries()) {
+                    var key = pair[0];
+                    var value = pair[1];
+                    var paramName = prefix + key;
+
+                    // Atualiza apenas as chaves vindas na URL
                     this.saveCookie(paramName, value);
                     this.saveLocal(paramName, value);
                     this.saveSession(paramName, value);
 
-                    if (ktmsUtmTagsToPass.includes(key)) {
-                        chavesUtm.push(key);
+                    if (ktmsUtmTagsToPass.indexOf(key) !== -1) {
+                        if (chavesUtm.indexOf(key) === -1) chavesUtm.push(key);
                     } else {
-                        chaves.push(key);
+                        if (chaves.indexOf(key) === -1) chaves.push(key);
                     }
                 }
 
-                //salva as listas de chaves
+                // Atualiza as listas com novas chaves (sem apagar antigas)
                 if (chavesUtm.length > 0) {
-                    const joined = chavesUtm.join(',');
+                    var joined = chavesUtm.join(',');
                     this.saveCookie(prefix + 'utmKey', joined);
                     this.saveLocal(prefix + 'utmKey', joined);
                     this.saveSession(prefix + 'utmKey', joined);
                 }
 
                 if (chaves.length > 0) {
-                    const joined = chaves.join(',');
+                    var joined = chaves.join(',');
                     this.saveCookie(prefix + 'hrefKeys', joined);
                     this.saveLocal(prefix + 'hrefKeys', joined);
                     this.saveSession(prefix + 'hrefKeys', joined);
@@ -70,61 +77,49 @@
 
 
         //buscar todas as UTMS e adicionar em links e formulários
-        ktmsLibFuncs.addUtmsHref = function() {
+        ktmsLibFuncs.addUtmsHref = function () {
             try {
                 if (typeof(window.addUtmsHref) === 'boolean' && window.addUtmsHref) return false;
                 window.addUtmsHref = true;
 
-                const utmKeysStr = this.getUtm('utmKey');
-                if (typeof utmKeysStr !== 'string' || utmKeysStr.trim() === '') {
+                var utmKeysStr = this.getUtm('utmKey');
+                if (!utmKeysStr || typeof utmKeysStr !== 'string') {
                     console.warn('[KTMS] Nenhuma UTM encontrada para adicionar.');
                     return false;
                 }
 
-                const utmKeys = utmKeysStr.split(',');
-                const utmParams = new URLSearchParams();
+                var utmKeys = utmKeysStr.split(',');
+                var utmString = '';
 
-                utmKeys.forEach(key => {
-                    const value = this.getUtm(key);
-                    if (value) utmParams.set(key, value); // Sempre sobrescreve os valores
-                });
+                for (var i = 0; i < utmKeys.length; i++) {
+                    var key = utmKeys[i];
+                    var value = this.getUtm(key);
+                    if (value) {
+                        if (utmString.length > 0) utmString += '&';
+                        utmString += encodeURIComponent(key) + '=' + encodeURIComponent(value);
+                    }
+                }
 
-                const utmString = utmParams.toString();
                 if (!utmString) return false;
 
-                const utmLinks = document.querySelectorAll('.utm-params');
-                utmLinks.forEach(link => {
-                    if (link.tagName === 'FORM') {
-                        const originalAction = link.getAttribute('action') || '';
-                        const url = new URL(originalAction, window.location.origin);
+                var utmLinks = document.querySelectorAll('.utm-params');
+                for (var j = 0; j < utmLinks.length; j++) {
+                    var link = utmLinks[j];
+                    var attr = link.tagName === 'FORM' ? 'action' : 'href';
+                    var original = link.getAttribute(attr) || '';
 
-                        // Remove parâmetros duplicados
-                        utmKeys.forEach(key => url.searchParams.delete(key));
-
-                        // Adiciona os novos UTMs
-                        utmKeys.forEach(key => {
-                            const value = this.getUtm(key);
-                            if (value) url.searchParams.set(key, value);
-                        });
-
-                        link.setAttribute('action', url.toString());
-
-                    } else {
-                        const originalHref = link.getAttribute('href') || '';
-                        const url = new URL(originalHref, window.location.origin);
-
-                        // Remove parâmetros duplicados
-                        utmKeys.forEach(key => url.searchParams.delete(key));
-
-                        // Adiciona os novos UTMs
-                        utmKeys.forEach(key => {
-                            const value = this.getUtm(key);
-                            if (value) url.searchParams.set(key, value);
-                        });
-
-                        link.setAttribute('href', url.toString());
+                    // Corrige casos onde o link já tem & mas não tem ?
+                    if (original.indexOf('?') === -1 && original.indexOf('&') !== -1) {
+                        var split = original.split('&');
+                        var base = split.shift();
+                        original = base + '?' + split.join('&');
                     }
-                });
+
+                    var sep = original.indexOf('?') !== -1 ? '&' : '?';
+                    var finalUrl = original + sep + utmString;
+
+                    link.setAttribute(attr, finalUrl);
+                }
 
                 return true;
             } catch (error) {
@@ -132,7 +127,6 @@
                 return false;
             }
         };
-        
 
         // buscar uma única utm
         ktmsLibFuncs.getUtm = function(paramName) {

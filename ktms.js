@@ -41,7 +41,10 @@
                     var value = pair[1];
                     var paramName = prefix + key;
 
-                    // Atualiza apenas as chaves vindas na URL
+                    // remove cookies com esse nome de possíveis escopos
+                    this.deleteCookieByName(paramName);
+
+                    // sobrescreve com valor da URL
                     this.saveCookie(paramName, value);
                     this.saveLocal(paramName, value);
                     this.saveSession(paramName, value);
@@ -229,6 +232,31 @@
                 return false;
             }
         }
+
+        ktmsLibFuncs.deleteCookieByName = function(name) {
+            try {
+                var path = ";path=/";
+                var expires = ";expires=Thu, 01 Jan 1970 00:00:01 GMT";
+
+                // remove no domínio atual
+                document.cookie = name + "=" + expires + path;
+
+                // remove no domínio raiz
+                var parts = window.location.hostname.split('.');
+                if (parts.length >= 2) {
+                    var rootDomain = '.' + parts.slice(parts.length - 2).join('.');
+                    document.cookie = name + "=" + expires + path + ";domain=" + rootDomain;
+                }
+
+                // remove no domínio com subdomínio direto (ex: central.astronmembers.com.br)
+                if (parts.length >= 3) {
+                    var fullDomain = '.' + parts.slice(parts.length - 3).join('.');
+                    document.cookie = name + "=" + expires + path + ";domain=" + fullDomain;
+                }
+            } catch (e) {
+                console.warn('[KTMS] Não foi possível limpar cookie duplicado:', name);
+            }
+        };
 
         ktmsLibFuncs.load = function(completeFunc) {
             try {
